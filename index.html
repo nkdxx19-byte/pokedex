@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ポケモン図鑑説明 検索アプリ</title>
+<style>
+  :root {
+    --primary-color: #E3350D; /* モンスターボールの赤 */
+    --bg-color: #F6F8FA;
+    --card-bg: #FFFFFF;
+    --text-color: #333333;
+    --border-color: #E1E4E8;
+  }
+  
+  body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+  }
+  
+  header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 16px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  
+  /* 検索ボックスのスタイル */
+  .search-box {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #555;
+  }
+  
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* iOSの自動ズーム防止 */
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+    background-color: #fff;
+  }
+  
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--primary-color);
+  }
+  
+  .search-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 8px;
+  }
+  
+  .search-btn:hover {
+    background-color: #C0290A;
+  }
+  
+  .result-count {
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #666;
+    font-weight: bold;
+  }
+  
+  /* ポケモンカード（開閉アコーディオン構造） */
+  .pokemon-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden; /* 角丸からはみ出さないように */
+  }
+  
+  /* クリック可能なポケモンヘッダーエリア */
+  .pokemon-header {
+    padding: 16px;
+    background: var(--card-bg);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    transition: background-color 0.2s;
+  }
+  
+  .pokemon-header:hover {
+    background-color: #F8F9FA;
+  }
+  
+  .pokemon-name {
+    font-size: 18px;
+    font-weight: bold;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 10px;
+    margin: 0;
+  }
+  
+  /* 開閉を表す矢印マーク */
+  .toggle-icon {
+    font-size: 14px;
+    color: #888;
+    transition: transform 0.3s ease;
+  }
+  
+  /* 図鑑説明を包むコンテンツエリア（初期状態は非表示） */
+  .pokemon-body {
+    display: none;
+    padding: 16px;
+    background: #FCFDFD;
+    border-top: 1px solid #F1F3F5;
+  }
+  
+  /* カードが開いているときのスタイル */
+  .pokemon-card.active .pokemon-body {
+    display: block;
+  }
+  
+  .pokemon-card.active .toggle-icon {
+    transform: rotate(180deg); /* 矢印を上向きに回転 */
+  }
+  
+  .version-entry {
+    margin-bottom: 16px;
+    padding-left: 12px;
+    border-left: 4px solid #E1E4E8;
+  }
+  
+  .version-entry:last-child {
+    margin-bottom: 0;
+  }
+  
+  .version-label {
+    display: inline-block;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-weight: bold;
+  }
+  
+  /* 🎨 歴代の各ソフトに対応したカラーバリエーションCSS */
+  .red-green { background-color: #FF4444; color: white; }
+  .blue { background-color: #4444FF; color: white; }
+  .yellow { background-color: #FFCC00; color: #333; }
+  .gold { background-color: #DAA520; color: white; }
+  .silver { background-color: #C0C0C0; color: #333; }
+  .crystal { background-color: #88CCFF; color: #333; }
+  .ruby { background-color: #A52A2A; color: white; }
+  .sapphire { background-color: #0000CD; color: white; }
+  .emerald { background-color: #2E8B57; color: white; }
+  .firered { background-color: #FF7F50; color: white; }
+  .leafgreen { background-color: #32CD32; color: white; }
+  .diamond { background-color: #aaaaff; color: #333; }
+  .pearl { background-color: #ffbbee; color: #333; }
+  .platinum { background-color: #708090; color: white; }
+  .heartgold { background-color: #B8860B; color: white; }
+  .soulsilver { background-color: #87CEEB; color: #333; }
+  .black { background-color: #111111; color: white; }
+  .white { background-color: #f5f5f5; color: #333; border: 1px solid #ccc; }
+  .b2w2 { background-color: #444444; color: white; }
+  .x { background-color: #1E90FF; color: white; }
+  .y { background-color: #FF1493; color: white; }
+  .omegaruby { background-color: #CD5C5C; color: white; }
+  .alphasapphire { background-color: #4169E1; color: white; }
+  .sun { background-color: #FF8C00; color: white; }
+  .moon { background-color: #4B0082; color: white; }
+  .ultrasun { background-color: #E9967A; color: white; }
+  .ultramoon { background-color: #9370DB; color: white; }
+  .lgpe { background-color: #9ACD32; color: #333; }
+  .sword { background-color: #00BFFF; color: white; }
+  .shield { background-color: #DC143C; color: white; }
+  .bdsp { background-color: #BA55D3; color: white; }
+  .arceus { background-color: #4A5D4E; color: white; }
+  .scarlet { background-color: #FF0000; color: white; }
+  .violet { background-color: #8A2BE2; color: white; }
+  
+  /* 外伝・その他用デフォルトグレー */
+  .version-label:not([class*=" "]) { background-color: #7F8C8D; color: white; }
+  
+  .description {
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  
+  .highlight {
+    background-color: #FFF000;
+    font-weight: bold;
+    color: #000;
+  }
+  
+  .no-result {
+    text-align: center;
+    color: #666;
+    padding: 40px 0;
+    background: var(--card-bg);
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+  }
+  
+  .error-message {
+    color: #D8000C;
+    background-color: #FFD2D2;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #D8000C;
+    text-align: center;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<header>ポケモン図鑑 逆引き検索</header>
+
+<div class="container">
+  <div class="search-box">
+    <div class="form-group">
+      <label for="nameInput">ポケモン名</label>
+      <input type="text" id="nameInput" placeholder="例: フシギダネ, ピカチュウ">
+    </div>
+    
+    <div class="form-group">
+      <label for="keywordInput">キーワード（図鑑説明）</label>
+      <input type="text" id="keywordInput" placeholder="例: タネ, でんき, いのち">
+    </div>
+    
+    <div class="form-group">
+      <label for="versionInput">作品名（ソフト）</label>
+      <select id="versionInput">
+        <option value="">すべてのソフト</option>
+      </select>
+    </div>
+    
+    <button class="search-btn" id="searchButton">検索する</button>
+  </div>
+  
+  <div class="result-count" id="resultCount"></div>
+  <div id="results"></div>
+</div>
+
+<script src="data.js"></script>
+
+<script>
+  const nameInput = document.getElementById('nameInput');
+  const keywordInput = document.getElementById('keywordInput');
+  const versionInput = document.getElementById('versionInput');
+  const searchButton = document.getElementById('searchButton');
+  const resultsContainer = document.getElementById('results');
+  const resultCount = document.getElementById('resultCount');
+
+  if (typeof pokedexDB === 'undefined') {
+    resultsContainer.innerHTML = `
+      <div class="error-message">
+        ⚠️ データファイル (data.js) が見つかりません。<br>
+        1. 変換ツール (converter.html) を使って CSV から data.js を書き出してください。<br>
+        2. 書き出した data.js を、この pokedex.html と同じフォルダに配置してください。
+      </div>`;
+    searchButton.disabled = true;
+  } else {
+    resultCount.textContent = '検索条件を入力して「検索する」ボタンを押してください。';
+    initVersionDropdown();
+  }
+
+  function initVersionDropdown() {
+    const versions = new Set();
+    pokedexDB.forEach(pokemon => {
+      if (pokemon.entries) {
+        pokemon.entries.forEach(entry => {
+          if (entry.version) versions.add(entry.version);
+        });
+      }
+    });
+
+    const sortedVersions = Array.from(versions).sort();
+    sortedVersions.forEach(v => {
+      const option = document.createElement('option');
+      option.value = v;
+      option.textContent = v;
+      versionInput.appendChild(option);
+    });
+  }
+
+  // アコーディオンの開閉を制御する関数
+  function toggleCard(cardElement) {
+    cardElement.classList.toggle('active');
+  }
+
+  // 検索メインロジック
+  function performSearch() {
+    if (typeof pokedexDB === 'undefined') return;
+
+    const nameQuery = nameInput.value.trim();
+    const keywordQuery = keywordInput.value.trim();
+    const versionQuery = versionInput.value;
+    
+    if (!nameQuery && !keywordQuery && !versionQuery) {
+      resultsContainer.innerHTML = '';
+      resultCount.textContent = '検索条件を入力して「検索する」ボタンを押してください。';
+      return;
+    }
+
+    let hitCount = 0;
+    let html = '';
+
+    const escapedKeyword = keywordQuery ? keywordQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+    const highlightRegex = escapedKeyword ? new RegExp(`(${escapedKeyword})`, 'gi') : null;
+
+    pokedexDB.forEach(pokemon => {
+      if (nameQuery && !pokemon.name.includes(nameQuery)) {
+        return;
+      }
+
+      let isHit = false;
+      let entriesHtml = '';
+
+      if (!pokemon.entries) return;
+
+      pokemon.entries.forEach(entry => {
+        const matchVersion = !versionQuery || entry.version === versionQuery;
+        const matchKeyword = !keywordQuery || entry.text.includes(keywordQuery);
+
+        if (matchVersion && matchKeyword) {
+          isHit = true;
+          let displayText = entry.text;
+          
+          if (highlightRegex) {
+            displayText = displayText.replace(highlightRegex, '<span class="highlight">$1</span>');
+          }
+          
+          const labelClass = entry.labelClass || '';
+          
+          entriesHtml += `
+            <div class="version-entry">
+              <span class="version-label ${labelClass}">${entry.version}</span>
+              <p class="description">${displayText}</p>
+            </div>
+          `;
+        }
+      });
+
+      if (isHit) {
+        hitCount++;
+        // 💡 構造を改良：ヘッダー（名前）とボディ（説明文）に切り分けました
+        html += `
+          <div class="pokemon-card" onclick="toggleCard(this)">
+            <div class="pokemon-header">
+              <h3 class="pokemon-name">${pokemon.name}</h3>
+              <span class="toggle-icon">▼</span>
+            </div>
+            <div class="pokemon-body" onclick="event.stopPropagation()">
+              ${entriesHtml}
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    if (hitCount > 0) {
+      resultCount.textContent = `${hitCount} 匹のポケモンが見つかりました`;
+      resultsContainer.innerHTML = html;
+    } else {
+      resultCount.textContent = '一致するデータは見つかりませんでした';
+      resultsContainer.innerHTML = '<div class="no-result">該当する図鑑説明はありません。<br>検索条件を変えてお試しください。</div>';
+    }
+  }
+
+  searchButton.addEventListener('click', performSearch);
+  
+  [nameInput, keywordInput].forEach(input => {
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    });
+  });
+</script>
+</body>
+</html>
